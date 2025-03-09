@@ -24,14 +24,16 @@ load_dotenv()
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ASSISTANT_ID = os.getenv('ASSISTANT_ID')
+VECTOR_STORE_ID = os.getenv('VECTOR_STORE_ID')
 
-if not OPENAI_API_KEY or not ASSISTANT_ID:
-    raise ValueError("Please set OPENAI_API_KEY and ASSISTANT_ID in .env file")
+if not OPENAI_API_KEY or not ASSISTANT_ID or not VECTOR_STORE_ID:
+    raise ValueError("Please set OPENAI_API_KEY, ASSISTANT_ID and VECTOR_STORE_ID in .env file")
 
 class OpenAIUploader:
-    def __init__(self, api_key: str, assistant_id: str):
+    def __init__(self, api_key: str, assistant_id: str, vector_store_id: str):
         self.client = OpenAI(api_key=api_key)
         self.assistant_id = assistant_id
+        self.vector_store_id = vector_store_id
 
     def upload_file(self, file_path: str) -> str:
         """Upload a file to OpenAI and attach it to the assistant"""
@@ -42,13 +44,27 @@ class OpenAIUploader:
                     file=file,
                     purpose='assistants'
                 )
+                logger.info(f"Uploaded file: {uploaded_file}")
 
-            # Attach the file to the assistant
-            self.client.beta.assistants.files.create(
-                assistant_id=self.assistant_id,
+            vector_store_files = self.client.beta.vector_stores.files.list(
+                vector_store_id=self.vector_store_id
+            )
+            logger.info(f"Retrieved vector store files: {vector_store_files}")
+            # Delete all files from vector store
+            for file in vector_store_files.data:
+                self.client.beta.vector_stores.files.delete(
+                    vector_store_id=self.vector_store_id,
+                    file_id=file.id
+                )
+            logger.info("Deleted all files from vector store")
+
+
+            # Attach the uploaded file to the vector store
+            self.client.beta.vector_stores.files.create(
+                vector_store_id=self.vector_store_id,
                 file_id=uploaded_file.id
             )
-
+            logger.info(f"Attached file to vector store: {self.vector_store_id}")
             logger.info(f"Successfully uploaded and attached file: {file_path}")
             return uploaded_file.id
         except Exception as e:
@@ -160,28 +176,22 @@ def main():
         site_data = scraper.scrape_data_from_urls(site_url, topic)
         all_data.extend(site_data)
 
-    # Save results
+    # Save results with normalized line endings
     output_file = 'data_objects.json'
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(all_data, f, indent=4, ensure_ascii=False)
+        f.write('\n')  # Add final newline
 
     logger.info(f"Data saved to {output_file}")
 
     # Upload to OpenAI Assistant
     try:
-        uploader = OpenAIUploader(OPENAI_API_KEY, ASSISTANT_ID)
+        uploader = OpenAIUploader(OPENAI_API_KEY, ASSISTANT_ID, VECTOR_STORE_ID)
+        # Continue with file upload
         file_id = uploader.upload_file(output_file)
         logger.info(f"Successfully uploaded to OpenAI. File ID: {file_id}")
     except Exception as e:
         logger.error(f"Failed to upload to OpenAI: {str(e)}")
-
-    # Print summary
-    for obj in all_data:
-        logger.info(f"URL: {obj['url']}")
-        logger.info(f"Title: {obj['data']['title']}")
-        logger.info(f"Description: {obj['data']['description']}")
-        logger.info(f"Body Preview: {obj['data']['body'][:200]}...")
-        logger.info("-" * 80)
 
 if __name__ == "__main__":
     main()
