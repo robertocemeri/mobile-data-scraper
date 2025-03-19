@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from urllib.parse import urljoin
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import schedule
 import time
 from datetime import datetime
+from supabase import create_client
 
 # Configure logging
 logging.basicConfig(
@@ -29,8 +30,12 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ASSISTANT_ID = os.getenv('ASSISTANT_ID')
 VECTOR_STORE_ID = os.getenv('VECTOR_STORE_ID')
 
-if not OPENAI_API_KEY or not ASSISTANT_ID or not VECTOR_STORE_ID:
-    raise ValueError("Please set OPENAI_API_KEY, ASSISTANT_ID and VECTOR_STORE_ID in .env file")
+# Add to existing environment variables
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+
+if not all([OPENAI_API_KEY, ASSISTANT_ID, VECTOR_STORE_ID, SUPABASE_URL, SUPABASE_KEY]):
+    raise ValueError("Please set all required environment variables in .env file")
 
 class OpenAIUploader:
     def __init__(self, api_key: str, assistant_id: str, vector_store_id: str):
@@ -161,17 +166,35 @@ class WebScraper:
 
         return data_objects
 
+def get_target_sites() -> List[Tuple[str, str]]:
+    """Fetch target sites from Supabase"""
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        
+        # Fetch all target sites from the 'target_sites' table
+        response = supabase.table('target_sites').select("url", "topic").execute()
+        
+        # Convert the response to the required format
+        target_sites = [(site['url'], site['topic']) for site in response.data]
+        
+        logger.info(f"Retrieved {len(target_sites)} target sites from Supabase")
+        return target_sites
+    except Exception as e:
+        logger.error(f"Error fetching target sites from Supabase: {str(e)}")
+        raise
+
 def job():
     """Main job to be run daily"""
     logger.info(f"Starting scheduled job at {datetime.now()}")
     try:
-        # Configuration
-        target_sites = [
-            ("https://www.swisscom.ch/en/residential.html", "Mobile"),
-            ("https://www.sunrise.ch/en/home", "Mobile"),
-            ("https://www.salt.ch/en", "Mobile"),
-            ("https://www.vodafone.al/", "Mobile")
-        ]
+        # Get target sites from Supabase
+        target_sites = get_target_sites()
+        
+        logger.info(target_sites)
+
+        if not target_sites:
+            logger.error("No target sites found in Supabase")
+            return
 
         scraper = WebScraper()
         all_data = []
