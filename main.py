@@ -10,6 +10,9 @@ from requests.packages.urllib3.util.retry import Retry
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+import schedule
+import time
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -158,40 +161,63 @@ class WebScraper:
 
         return data_objects
 
-def main():
-    # Configuration
-    target_sites = [
-        ("https://www.swisscom.ch/en/residential.html", "Mobile"),
-        ("https://www.sunrise.ch/en/home", "Mobile"),
-        ("https://www.salt.ch/en", "Mobile"),
-        ("https://www.vodafone.al/", "Mobile")
-    ]
-
-    scraper = WebScraper()
-    all_data = []
-
-    # Scrape data from all sites
-    for site_url, topic in target_sites:
-        logger.info(f"Processing site: {site_url}")
-        site_data = scraper.scrape_data_from_urls(site_url, topic)
-        all_data.extend(site_data)
-
-    # Save results with normalized line endings
-    output_file = 'data_objects.json'
-    with open(output_file, 'w', encoding='utf-8', newline='\n') as f:
-        json.dump(all_data, f, indent=4, ensure_ascii=False)
-        f.write('\n')  # Add final newline
-
-    logger.info(f"Data saved to {output_file}")
-
-    # Upload to OpenAI Assistant
+def job():
+    """Main job to be run daily"""
+    logger.info(f"Starting scheduled job at {datetime.now()}")
     try:
+        # Configuration
+        target_sites = [
+            ("https://www.swisscom.ch/en/residential.html", "Mobile"),
+            ("https://www.sunrise.ch/en/home", "Mobile"),
+            ("https://www.salt.ch/en", "Mobile"),
+            ("https://www.vodafone.al/", "Mobile")
+        ]
+
+        scraper = WebScraper()
+        all_data = []
+
+        # Scrape data from all sites
+        for site_url, topic in target_sites:
+            logger.info(f"Processing site: {site_url}")
+            site_data = scraper.scrape_data_from_urls(site_url, topic)
+            all_data.extend(site_data)
+
+        # Save results with normalized line endings
+        output_file = 'data_objects.json'
+        with open(output_file, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(all_data, f, indent=4, ensure_ascii=False)
+            f.write('\n')  # Add final newline
+
+        logger.info(f"Data saved to {output_file}")
+
+        # Upload to OpenAI Assistant
         uploader = OpenAIUploader(OPENAI_API_KEY, ASSISTANT_ID, VECTOR_STORE_ID)
-        # Continue with file upload
         file_id = uploader.upload_file(output_file)
         logger.info(f"Successfully uploaded to OpenAI. File ID: {file_id}")
+        
     except Exception as e:
-        logger.error(f"Failed to upload to OpenAI: {str(e)}")
+        logger.error(f"Error in scheduled job: {str(e)}")
+        # You might want to add notification logic here for failed jobs
+
+def main():
+    """Setup and run the scheduler"""
+    logger.info("Starting scheduler...")
+    
+    # Schedule the job to run at 2 AM every day
+    schedule.every().day.at("02:00").do(job)
+    
+    # Run the job immediately on startup (optional)
+    logger.info("Running initial job...")
+    job()
+    
+    # Keep the script running
+    while True:
+        try:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+        except Exception as e:
+            logger.error(f"Error in scheduler loop: {str(e)}")
+            time.sleep(60)  # Wait a minute before retrying
 
 if __name__ == "__main__":
     main()
