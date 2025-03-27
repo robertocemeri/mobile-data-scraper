@@ -83,6 +83,8 @@ class WebScraper:
     def __init__(self, max_workers: int = 5, timeout: int = 10):
         self.session = self._create_session(timeout)
         self.max_workers = max_workers
+        # Keep track of valid and invalid URLs
+        self.invalid_urls = set()
 
     def _create_session(self, timeout: int) -> requests.Session:
         """Create a session with retry strategy"""
@@ -98,15 +100,23 @@ class WebScraper:
         session.timeout = timeout
         return session
 
-    def _fetch_page(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch and parse a page, returning BeautifulSoup object"""
+    def _is_valid_url(self, url: str) -> bool:
+        """Validate if URL is accessible and returns valid content"""
         try:
-            response = self.session.get(url)
-            response.raise_for_status()
-            return BeautifulSoup(response.content, 'html.parser')
-        except requests.RequestException as e:
-            logger.error(f"Error fetching {url}: {str(e)}")
-            return None
+            response = self.session.head(url, allow_redirects=True)
+            # Check if status code is successful (200-299) or a redirect (300-399)
+            return 200 <= response.status_code < 400
+        except requests.RequestException:
+            return False
+
+    def _clean_url(self, url: str) -> str:
+        """Clean and normalize URL"""
+        # Remove fragments
+        url = url.split('#')[0]
+        # Remove query parameters
+        url = url.split('?')[0]
+        # Ensure URL ends without trailing slash
+        return url.rstrip('/')
 
     def get_related_urls(self, page_url: str, topic: str) -> List[str]:
         """Get URLs related to the specified topic from the page"""
@@ -122,10 +132,23 @@ class WebScraper:
             href = link['href']
             if topic.lower() in href.lower() or topic.lower() in link.text.lower():
                 full_url = urljoin(page_url, href)
-                related_urls.append(full_url)
+                clean_url = self._clean_url(full_url)
+                
+                # Skip if URL was previously found invalid
+                if clean_url in self.invalid_urls:
+                    continue
+                
+                # Validate URL
+                if self._is_valid_url(clean_url):
+                    related_urls.append(clean_url)
+                else:
+                    logger.warning(f"Invalid URL found: {clean_url}")
+                    self.invalid_urls.add(clean_url)
 
-        logger.info(f"Found {len(related_urls)} related URLs for topic '{topic}' on {page_url}")
-        return list(set(related_urls))  # Remove duplicates
+        valid_urls = list(set(related_urls))  # Remove duplicates
+        logger.info(f"Found {len(valid_urls)} valid URLs for topic '{topic}' on {page_url}")
+        logger.info(f"Filtered out {len(self.invalid_urls)} invalid URLs")
+        return valid_urls
 
     def extract_data_from_url(self, url: str) -> Optional[Dict]:
         """Extract relevant data from a URL"""
@@ -143,6 +166,24 @@ class WebScraper:
         """Extract meta description from BeautifulSoup object"""
         meta = soup.find('meta', attrs={'name': 'description'})
         return meta['content'] if meta and 'content' in meta.attrs else "No description found"
+
+    def _fetch_page(self, url: str) -> Optional[BeautifulSoup]:
+        """Fetch and parse a page, returning BeautifulSoup object"""
+        try:
+            response = self.session.get(url)
+            response.raise_for_status()
+            
+            # Check if content type is HTML
+            content_type = response.headers.get('content-type', '').lower()
+            if 'text/html' not in content_type:
+                logger.warning(f"Skipping non-HTML content at {url} (Content-Type: {content_type})")
+                return None
+
+            return BeautifulSoup(response.content, 'html.parser')
+        except requests.RequestException as e:
+            logger.error(f"Error fetching {url}: {str(e)}")
+            self.invalid_urls.add(self._clean_url(url))
+            return None
 
     def scrape_data_from_urls(self, page_url: str, topic: str) -> List[Dict]:
         """Main scraping function using thread pool for parallel processing"""
@@ -163,7 +204,12 @@ class WebScraper:
                         data_objects.append({'url': url, 'data': data})
                 except Exception as e:
                     logger.error(f"Error processing {url}: {str(e)}")
+                    self.invalid_urls.add(self._clean_url(url))
 
+        # Log summary of scraping results
+        logger.info(f"Successfully scraped {len(data_objects)} pages")
+        logger.info(f"Total invalid URLs encountered: {len(self.invalid_urls)}")
+        
         return data_objects
 
 def get_target_sites() -> List[Tuple[str, str]]:
@@ -171,7 +217,7 @@ def get_target_sites() -> List[Tuple[str, str]]:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         
-        # Fetch all target sites from the 'target_sites' table
+        # Changed table name from 'u' to 'target_sites'
         response = supabase.table('target_sites').select("url", "topic").execute()
         
         # Convert the response to the required format
