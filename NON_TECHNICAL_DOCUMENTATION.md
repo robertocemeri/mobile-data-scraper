@@ -23,73 +23,10 @@ graph TD
     style H fill:#fff2cc
 ```
 
-### 2. Daily Operation Schedule
-```mermaid
-graph TD
-    A[Start at 2 AM] --> B[Check Websites]
-    B --> C{Everything OK?}
-    C -->|Yes| D[Save Information]
-    C -->|No| E[Try Again]
-    E --> B
-    D --> F[Complete Daily Run]
-    style A fill:#d4f1f4
-    style B fill:#e1f7d5
-    style C fill:#ffe1e1
-    style D fill:#fff2cc
-    style E fill:#ffe1e1
-    style F fill:#d4f1f4
-```
-
-### 3. Safety System
-```mermaid
-graph TD
-    A[Website Request] --> B{Is Website Available?}
-    B -->|Yes| C[Collect Data]
-    B -->|No| D[Wait and Try Again]
-    C --> E[Save Safely]
-    D --> A
-    style A fill:#e1f7d5
-    style B fill:#ffe1e1
-    style C fill:#e1f7d5
-    style D fill:#ffe1e1
-    style E fill:#fff2cc
-```
-
-### 4. Data Storage System
-```mermaid
-graph TD
-    A[Collected Information] --> B[Security Check]
-    B --> C[Store in 3 Places]
-    C --> D[Secure Database]
-    C --> E[JSON File]
-    C --> F[Smart Search System]
-    style A fill:#e1f7d5
-    style B fill:#ffe1e1
-    style C fill:#d4f1f4
-    style D fill:#fff2cc
-    style E fill:#fff2cc
-    style F fill:#fff2cc
-```
-
-### 5. Error Handling
-```mermaid
-graph TD
-    A[Problem Detected] --> B[Log the Issue]
-    B --> C[Try to Fix]
-    C -->|Fixed| D[Continue Operation]
-    C -->|Not Fixed| E[Alert Support Team]
-    style A fill:#ffe1e1
-    style B fill:#fff2cc
-    style C fill:#e1f7d5
-    style D fill:#d4f1f4
-    style E fill:#ffe1e1
-```
-
 These diagrams show:
 - How information flows through the system
 - What happens during daily operations
 - How data is stored safely
-- What happens when problems occur
 - How the system protects itself and the data
 
 Color Key:
@@ -104,6 +41,7 @@ This system automatically collects information about mobile plans and services f
 - Swisscom
 - Sunrise
 - Salt
+etc
 
 Think of it as a digital assistant that visits these websites every day at 2 AM, reads through their pages, and saves all the relevant information about mobile plans and services.
 
@@ -180,8 +118,7 @@ The system creates detailed logs showing:
 ## Current Limitations
 
 1. **Website Changes**: If the telecom websites significantly change their structure, the system might need updates
-2. **Rate Limits**: The system can only make a certain number of requests per minute to avoid overloading the websites
-3. **Content Updates**: The system only checks once per day, so very recent changes won't be captured immediately
+2. **Content Updates**: The system only checks once per day, so very recent changes won't be captured immediately
 
 ## Recommendations for Long-Term Improvement
 
@@ -224,20 +161,3 @@ The system creates detailed logs showing:
    - Optimize database queries
    - Implement caching mechanisms
    - Add load balancing for high availability
-
-## Support and Help
-
-If you encounter any issues or need assistance:
-1. Check the application logs for error messages
-2. Verify that all required services (Supabase, OpenAI) are working
-3. Contact the technical team for support
-
-## Success Metrics
-
-To measure the system's effectiveness, monitor:
-1. Number of successfully collected pages per day
-2. Error rate and types
-3. Data freshness and accuracy
-4. System uptime and reliability
-
-Remember: This is a living system that needs regular attention and updates to maintain its effectiveness and reliability.
