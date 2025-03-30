@@ -1,6 +1,103 @@
 # Web Scraping System for Swiss Telecom Data
 Last Updated: [29-03-2025]
 
+## Visual System Overview
+
+### 1. How The System Works - Basic Flow
+```mermaid
+graph TD
+    A[Automatic Schedule] --> B[Web Scraper]
+    B[Web Scraper] --> C[Visit Telecom Websites]
+    C --> D[Collect Information]
+    D --> E[Store Data]
+    E --> F[Database]
+    E --> G[JSON File]
+    E --> H[Smart Search Storage]
+    style A fill:#d4f1f4
+    style B fill:#e1f7d5
+    style C fill:#e1f7d5
+    style D fill:#e1f7d5
+    style E fill:#ffe1e1
+    style F fill:#fff2cc
+    style G fill:#fff2cc
+    style H fill:#fff2cc
+```
+
+### 2. Daily Operation Schedule
+```mermaid
+graph TD
+    A[Start at 2 AM] --> B[Check Websites]
+    B --> C{Everything OK?}
+    C -->|Yes| D[Save Information]
+    C -->|No| E[Try Again]
+    E --> B
+    D --> F[Complete Daily Run]
+    style A fill:#d4f1f4
+    style B fill:#e1f7d5
+    style C fill:#ffe1e1
+    style D fill:#fff2cc
+    style E fill:#ffe1e1
+    style F fill:#d4f1f4
+```
+
+### 3. Safety System
+```mermaid
+graph TD
+    A[Website Request] --> B{Is Website Available?}
+    B -->|Yes| C[Collect Data]
+    B -->|No| D[Wait and Try Again]
+    C --> E[Save Safely]
+    D --> A
+    style A fill:#e1f7d5
+    style B fill:#ffe1e1
+    style C fill:#e1f7d5
+    style D fill:#ffe1e1
+    style E fill:#fff2cc
+```
+
+### 4. Data Storage System
+```mermaid
+graph TD
+    A[Collected Information] --> B[Security Check]
+    B --> C[Store in 3 Places]
+    C --> D[Secure Database]
+    C --> E[JSON File]
+    C --> F[Smart Search System]
+    style A fill:#e1f7d5
+    style B fill:#ffe1e1
+    style C fill:#d4f1f4
+    style D fill:#fff2cc
+    style E fill:#fff2cc
+    style F fill:#fff2cc
+```
+
+### 5. Error Handling
+```mermaid
+graph TD
+    A[Problem Detected] --> B[Log the Issue]
+    B --> C[Try to Fix]
+    C -->|Fixed| D[Continue Operation]
+    C -->|Not Fixed| E[Alert Support Team]
+    style A fill:#ffe1e1
+    style B fill:#fff2cc
+    style C fill:#e1f7d5
+    style D fill:#d4f1f4
+    style E fill:#ffe1e1
+```
+
+These diagrams show:
+- How information flows through the system
+- What happens during daily operations
+- How data is stored safely
+- What happens when problems occur
+- How the system protects itself and the data
+
+Color Key:
+- 🔵 Light Blue: Scheduling and completion
+- 🟢 Light Green: Active processes
+- 🔴 Light Red: Decision points and safety checks
+- 🟡 Light Yellow: Storage and logging
+
 ## What Does This System Do?
 
 This system automatically collects information about mobile plans and services from three major Swiss telecommunications providers as an example but this is connected to the database which can be expanded:
