@@ -33,10 +33,6 @@ graph TD
     H --> I[Save to JSON]
     I --> J[Upload to OpenAI]
     J --> K[End Process]
-    
-    L[Error Handling] --> M[Retry Mechanism]
-    L --> N[Invalid URL Storage]
-    L --> O[Logging]
 ```
 
 ## Components Implemented
